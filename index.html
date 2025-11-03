@@ -2,45 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Reset Voter Access</title>
+  <title>Poll Admin Panel</title>
+  <link rel="icon" type="image/png" href="gns.PNG">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #e3f2fd, #f1f8e9);
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #f3e5f5, #e3f2fd);
       text-align: center;
-      padding: 60px;
+      padding: 40px;
       color: #333;
     }
-    h1 { font-size: 2em; margin-bottom: 25px; }
-    .reset-btn {
-      padding: 15px 30px;
-      font-size: 1.1em;
+    h1 { font-size: 2.4em; margin-bottom: 20px; }
+    button {
+      padding: 12px 20px;
+      margin: 10px;
       border: none;
       border-radius: 10px;
-      background-color: #007BFF;
-      color: white;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-      transition: background-color 0.2s, transform 0.1s;
+      font-size: 1em;
+      transition: 0.2s;
     }
-    .reset-btn:hover { background-color: #0056b3; transform: scale(1.05); }
-    #status { margin-top: 20px; font-size: 1.1em; color: #333; }
+    .reset-btn { background: #ef5350; color: white; }
+    .local-btn { background: #42a5f5; color: white; }
+    .reset-btn:hover { background: #e53935; }
+    .local-btn:hover { background: #1e88e5; }
+    #results p { font-size: 1.2em; margin: 5px 0; }
+    #login-screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 90vh;
+    }
+    #admin-panel { display: none; }
   </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
+      authDomain: "live-poll-gns.firebaseapp.com",
+      databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "live-poll-gns",
+      storageBucket: "live-poll-gns.firebasestorage.app",
+      messagingSenderId: "217106845763",
+      appId: "1:217106845763:web:ba85010fe1a630aae344f6",
+      measurementId: "G-8TC1WSCRB6"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
 </head>
 
 <body>
-  <h1>Reset Vote Access</h1>
-  <p>Click below to allow yourself to vote again on the main poll site.</p>
+  <div id="login-screen">
+    <h1>Admin Access</h1>
+    <input type="password" id="password" placeholder="Enter Password" style="padding:10px; font-size:1em;">
+    <button onclick="checkPassword()" style="margin-top:10px;">Login</button>
+    <p id="login-msg" style="color:red; margin-top:10px;"></p>
+  </div>
 
-  <button class="reset-btn" id="resetBtn">🔄 Reset My Vote Access</button>
-  <p id="status"></p>
+  <div id="admin-panel">
+    <h1>Live Poll Results</h1>
+    <div id="results">Loading results...</div>
+
+    <div style="margin-top: 25px;">
+      <button class="local-btn" onclick="resetMyVote()">🔁 Reset My Vote</button>
+      <button class="reset-btn" onclick="resetAllVotes()">🧨 Reset All Votes</button>
+    </div>
+
+    <p style="margin-top:30px; color:#666;">Admin Panel – GNS Inter-House Poll</p>
+  </div>
 
   <script>
-    document.getElementById("resetBtn").addEventListener("click", () => {
+    function checkPassword() {
+      const entered = document.getElementById("password").value.trim();
+      if (entered === "Osama") {
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("admin-panel").style.display = "block";
+        startLiveResults();
+      } else {
+        document.getElementById("login-msg").textContent = "❌ Incorrect password!";
+      }
+    }
+
+    function startLiveResults() {
+      const resultsDiv = document.getElementById("results");
+      db.ref("poll").on("value", snapshot => {
+        const data = snapshot.val() || {};
+        resultsDiv.innerHTML = `
+          <p>🟩 Mithila (Green): <b>${data.optionA || 0}</b></p>
+          <p>🟦 Nalanda (Blue): <b>${data.optionB || 0}</b></p>
+          <p>🟥 Takshashila (Red): <b>${data.optionC || 0}</b></p>
+          <p>🟨 Vikramshila (Yellow): <b>${data.optionD || 0}</b></p>
+        `;
+      });
+    }
+
+    function resetMyVote() {
       localStorage.removeItem("hasVoted");
-      document.getElementById("status").textContent = "✅ You can now vote again!";
-    });
+      alert("✅ You can now vote again on this device.");
+    }
+
+    function resetAllVotes() {
+      if (confirm("⚠️ Are you sure you want to reset ALL votes? This cannot be undone.")) {
+        db.ref("poll").set({
+          optionA: 0,
+          optionB: 0,
+          optionC: 0,
+          optionD: 0
+        });
+        alert("🧹 All votes have been reset.");
+      }
+    }
   </script>
 </body>
 </html>
