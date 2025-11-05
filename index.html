@@ -1,79 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
   <title>Admin Control Panel</title>
-  <link rel="icon" type="image/png" href="gns.PNG">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" href="gns.PNG" />
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #f3e5f5; /* lavender */
-      text-align: center;
+      background: #f3e5f5;
+      margin: 0;
       padding: 40px;
+      text-align: center;
       color: #333;
     }
-    h1 { font-size: 2.2em; margin-bottom: 10px; }
     .panel {
-      background: #fff;
-      border-radius: 16px;
       display: inline-block;
-      padding: 25px 35px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-      margin-top: 20px;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
     }
+    h1 { margin-bottom: 6px; }
     button {
       display: block;
       width: 280px;
-      margin: 12px auto;
-      padding: 14px;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 8px;
       border: none;
-      border-radius: 10px;
-      font-size: 1.05em;
       color: #fff;
       cursor: pointer;
-      transition: transform 0.15s ease-in-out, box-shadow 0.2s;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+      font-size: 15px;
+      transition: background 0.25s;
     }
-    button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 10px rgba(0,0,0,0.2);
-    }
-    .red { background-color: #e53935; }
-    .green { background-color: #43a047; }
-    .blue { background-color: #1e88e5; }
-    .orange { background-color: #fb8c00; }
-    .purple { background-color: #8e24aa; }
-    .footer { margin-top: 40px; font-size: 0.9em; color: #666; }
+    .red { background: #e53935; }
+    .orange { background: #fb8c00; }
+    .green { background: #43a047; }
+    .blue { background: #1e88e5; }
+    .purple { background: #8e24aa; }
+    button:hover { opacity: 0.9; }
+
+    table { width: 90%; margin: 18px auto; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; }
+    th { background: #e1bee7; }
+
+    #controls { margin-top: 10px; }
     #loginBox {
       background: #ede7f6;
+      padding: 16px;
       border-radius: 10px;
-      padding: 20px;
       display: inline-block;
     }
-    input[type=password] {
-      padding: 10px;
-      width: 200px;
-      border-radius: 6px;
-      border: 1px solid #aaa;
-      margin-right: 10px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 25px;
-    }
-    th, td { border: 1px solid #ddd; padding: 10px; }
-    th { background-color: #e1bee7; }
-    td { font-weight: 500; }
   </style>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase + Chart.js -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Admin Control Panel</h1>
+
+  <div id="loginBox">
+    <p><strong>Enter Admin Password</strong></p>
+    <input id="adminPass" type="password" placeholder="Password" />
+    <button class="purple" onclick="checkPassword()">Login</button>
+    <p id="loginStatus" style="color:#c62828"></p>
+  </div>
+
+  <div id="controls" class="panel" style="display:none">
+    <h2>Control Actions</h2>
+    <div id="controlsInner">
+      <button class="red"    onclick="confirmResetVotes()">Reset All Votes</button>
+      <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
+      <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
+      <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
+      <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
+    </div>
+
+    <h3>Live Results</h3>
+    <table>
+      <thead><tr><th>House</th><th>Votes</th></tr></thead>
+      <tbody>
+        <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
+        <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
+        <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
+        <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
+      </tbody>
+    </table>
+    <canvas id="votesChart" width="320" height="320"></canvas>
+  </div>
 
   <script>
+    // Firebase config (same as voter)
     const firebaseConfig = {
       apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
       authDomain: "live-poll-gns.firebaseapp.com",
@@ -86,131 +106,114 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-  </script>
-</head>
 
-<body>
-  <h1>Admin Control Panel</h1>
-
-  <!-- Login -->
-  <div id="loginBox">
-    <p><strong>Enter Admin Password:</strong></p>
-    <input type="password" id="adminPass" placeholder="Password">
-    <button class="purple" onclick="checkPassword()">Login</button>
-    <p id="loginStatus" style="color:#e53935;"></p>
-  </div>
-
-  <!-- Controls -->
-  <div id="controls" class="panel" style="display:none;">
-    <h2>Control Actions</h2>
-    <button class="red" onclick="confirmResetVotes()">Reset All Votes</button>
-    <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
-    <button class="green" onclick="downloadCSV()">Download CSV</button>
-    <button class="blue" onclick="toggleGeo()">Toggle Geo Restriction</button>
-    <button class="purple" onclick="toggleVoting()">Toggle Voting</button>
-
-    <h2>Live Results</h2>
-    <table id="resultsTable">
-      <thead>
-        <tr><th>House</th><th>Votes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
-        <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
-        <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
-        <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
-      </tbody>
-    </table>
-
-    <canvas id="votesChart" width="300" height="300" style="margin-top:25px;"></canvas>
-  </div>
-
-  <div class="footer"><p>Made by GNS Students | Admin Access Only</p></div>
-
-  <script>
-    const PASSWORD = "osamabinladen";
+    const PASSWORD = 'osamabinladen';
     let chart;
+    const geoBtn = document.getElementById('geoBtn');
+    const voteBtn = document.getElementById('voteBtn');
 
     function checkPassword() {
-      const entered = document.getElementById("adminPass").value;
-      if (entered === PASSWORD) {
-        document.getElementById("loginBox").style.display = "none";
-        document.getElementById("controls").style.display = "inline-block";
+      const p = document.getElementById('adminPass').value;
+      if (p === PASSWORD) {
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
         startLiveResults();
+        syncButtonLabels();
       } else {
-        document.getElementById("loginStatus").textContent = "❌ Incorrect password!";
+        document.getElementById('loginStatus').textContent = 'Incorrect password';
       }
     }
 
+    // Sync labels from Firebase
+    async function syncButtonLabels() {
+      const [geoSnap, voteSnap] = await Promise.all([
+        db.ref('settings/geoEnabled').once('value'),
+        db.ref('settings/votingEnabled').once('value')
+      ]);
+      const geoEnabled = geoSnap.exists() ? geoSnap.val() : false;
+      const voteEnabled = voteSnap.exists() ? voteSnap.val() : false;
+
+      geoBtn.textContent = geoEnabled ? "Disable Geo Restriction" : "Enable Geo Restriction";
+      voteBtn.textContent = voteEnabled ? "Disable Voting" : "Enable Voting";
+    }
+
+    // Reset Votes
     function confirmResetVotes() {
-      if (confirm("⚠️ Are you sure you want to reset ALL votes?")) {
-        db.ref("poll").set({
-          optionA: 0, optionB: 0, optionC: 0, optionD: 0
-        });
-        alert("✅ All votes reset!");
-      }
+      if (!confirm('⚠️ Reset ALL votes? This cannot be undone.')) return;
+      db.ref('poll').set({ optionA:0, optionB:0, optionC:0, optionD:0 });
+      alert('All votes reset.');
     }
 
+    // Reset 'hasVoted'
     function confirmResetHasVoted() {
-      if (confirm("⚠️ Allow everyone to vote again?")) {
-        db.ref("resetFlag").set(Date.now());
-        alert("✅ All 'hasVoted' reset!");
-      }
-    }
-
-    function downloadCSV() {
-      db.ref("poll").once("value").then(snapshot => {
-        const d = snapshot.val();
-        const csv = `House,Votes
-Green (Mithila),${d.optionA || 0}
-Blue (Nalanda),${d.optionB || 0}
-Red (Takshashila),${d.optionC || 0}
-Yellow (Vikramshila),${d.optionD || 0}`;
-        const blob = new Blob([csv], { type: "text/csv" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "poll_results.csv";
-        link.click();
+      if (!confirm("⚠️ This will allow EVERYONE to vote again (clears hasVoted). Continue?")) return;
+      db.ref('resetFlag').set(true).then(() => {
+        setTimeout(() => db.ref('resetFlag').remove().catch(() => {}), 1200);
+        alert("'hasVoted' reset trigger sent.");
       });
     }
 
-    function toggleGeo() {
-      db.ref("settings/geoEnabled").once("value").then(s => {
-        const val = s.val();
-        db.ref("settings/geoEnabled").set(!val);
-        alert(`🌍 Geo restriction is now ${!val ? "ENABLED" : "DISABLED"}`);
-      });
+    // Download CSV
+    async function confirmDownloadCSV() {
+      if (!confirm('Download current results as CSV?')) return;
+      const snap = await db.ref('poll').once('value');
+      const d = snap.val() || {};
+      const csv = `House,Votes
+Green (Mithila),${d.optionA||0}
+Blue (Nalanda),${d.optionB||0}
+Red (Takshashila),${d.optionC||0}
+Yellow (Vikramshila),${d.optionD||0}`;
+      const blob = new Blob([csv], { type:'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'poll_results.csv';
+      a.click();
     }
 
-    function toggleVoting() {
-      db.ref("settings/votingEnabled").once("value").then(s => {
-        const val = s.val();
-        db.ref("settings/votingEnabled").set(!val);
-        alert(`🗳️ Voting is now ${!val ? "ENABLED" : "DISABLED"}`);
-      });
+    // Toggle Geo Restriction
+    async function confirmToggleGeo() {
+      const snap = await db.ref('settings/geoEnabled').once('value');
+      const cur = snap.exists() ? snap.val() : false;
+      const newState = !cur;
+      if (!confirm(`Are you sure you want to ${cur ? 'DISABLE' : 'ENABLE'} geo restriction?`)) return;
+      await db.ref('settings/geoEnabled').set(newState);
+      geoBtn.textContent = newState ? "Disable Geo Restriction" : "Enable Geo Restriction";
+      alert(`Geo restriction ${newState ? 'enabled' : 'disabled'}.`);
     }
 
+    // Toggle Voting
+    async function confirmToggleVoting() {
+      const snap = await db.ref('settings/votingEnabled').once('value');
+      const cur = snap.exists() ? snap.val() : false;
+      const newState = !cur;
+      if (!confirm(`Are you sure you want to ${cur ? 'DISABLE' : 'ENABLE'} voting?`)) return;
+      await db.ref('settings/votingEnabled').set(newState);
+      voteBtn.textContent = newState ? "Disable Voting" : "Enable Voting";
+      alert(`Voting ${newState ? 'enabled' : 'disabled'}.`);
+    }
+
+    // Live Results + Pie Chart
     function startLiveResults() {
-      db.ref("poll").on("value", snap => {
+      db.ref('poll').on('value', snap => {
         const d = snap.val() || {};
-        const A = d.optionA || 0, B = d.optionB || 0, C = d.optionC || 0, D = d.optionD || 0;
-        document.getElementById("aVotes").textContent = A;
-        document.getElementById("bVotes").textContent = B;
-        document.getElementById("cVotes").textContent = C;
-        document.getElementById("dVotes").textContent = D;
+        const A = d.optionA||0, B = d.optionB||0, C = d.optionC||0, D = d.optionD||0;
+        document.getElementById('aVotes').textContent = A;
+        document.getElementById('bVotes').textContent = B;
+        document.getElementById('cVotes').textContent = C;
+        document.getElementById('dVotes').textContent = D;
 
-        const ctx = document.getElementById("votesChart").getContext("2d");
+        const ctx = document.getElementById('votesChart').getContext('2d');
         if (chart) chart.destroy();
         chart = new Chart(ctx, {
-          type: "pie",
+          type: 'pie',
           data: {
-            labels: ["Green", "Blue", "Red", "Yellow"],
+            labels: ['Green (Mithila)','Blue (Nalanda)','Red (Takshashila)','Yellow (Vikramshila)'],
             datasets: [{
-              data: [A, B, C, D],
-              backgroundColor: ["#4CAF50", "#2196F3", "#F44336", "#FFB300"]
+              data: [A,B,C,D],
+              backgroundColor: ['#4CAF50','#2196F3','#F44336','#FFB300']
             }]
           },
-          options: { plugins: { legend: { position: "bottom" } } }
+          options: { plugins: { legend: { position: 'bottom' } } }
         });
       });
     }
