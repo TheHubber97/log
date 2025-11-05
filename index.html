@@ -2,45 +2,87 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Poll Admin Panel</title>
+  <title>Admin Control Panel</title>
   <link rel="icon" type="image/png" href="gns.PNG">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: linear-gradient(135deg, #f3e5f5, #e3f2fd);
+      background: #f3e5f5; /* lavender */
       text-align: center;
       padding: 40px;
       color: #333;
     }
-    h1 { font-size: 2.4em; margin-bottom: 20px; }
+    h1 {
+      font-size: 2.2em;
+      margin-bottom: 10px;
+    }
+    .panel {
+      background: #fff;
+      border-radius: 16px;
+      display: inline-block;
+      padding: 25px 35px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      margin-top: 20px;
+    }
     button {
-      padding: 12px 20px;
-      margin: 10px;
+      display: block;
+      width: 280px;
+      margin: 12px auto;
+      padding: 14px;
       border: none;
       border-radius: 10px;
+      font-size: 1.05em;
+      color: #fff;
       cursor: pointer;
-      font-size: 1em;
-      transition: 0.2s;
+      transition: transform 0.15s ease-in-out, box-shadow 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
     }
-    .reset-btn { background: #ef5350; color: white; }
-    .local-btn { background: #42a5f5; color: white; }
-    .reset-btn:hover { background: #e53935; }
-    .local-btn:hover { background: #1e88e5; }
-    #results p { font-size: 1.2em; margin: 5px 0; }
-    #login-screen {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 90vh;
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 10px rgba(0,0,0,0.2);
     }
-    #admin-panel { display: none; }
+    .red { background-color: #e53935; }
+    .green { background-color: #43a047; }
+    .blue { background-color: #1e88e5; }
+    .orange { background-color: #fb8c00; }
+    .purple { background-color: #8e24aa; }
+    .footer { margin-top: 40px; font-size: 0.9em; color: #666; }
+    #loginBox {
+      background: #ede7f6;
+      border-radius: 10px;
+      padding: 20px;
+      display: inline-block;
+    }
+    input[type=password] {
+      padding: 10px;
+      width: 200px;
+      border-radius: 6px;
+      border: 1px solid #aaa;
+      margin-right: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 25px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+    th {
+      background-color: #e1bee7;
+    }
+    td {
+      font-weight: 500;
+    }
   </style>
 
-  <!-- Firebase -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <!-- Chart.js for pie chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -59,56 +101,62 @@
 </head>
 
 <body>
-  <div id="login-screen">
-    <h1>Admin Access</h1>
-    <input type="password" id="password" placeholder="Enter Password" style="padding:10px; font-size:1em;">
-    <button onclick="checkPassword()" style="margin-top:10px;">Login</button>
-    <p id="login-msg" style="color:red; margin-top:10px;"></p>
+  <h1>Admin Control Panel</h1>
+
+  <!-- Login -->
+  <div id="loginBox">
+    <p><strong>Enter Admin Password:</strong></p>
+    <input type="password" id="adminPass" placeholder="Password">
+    <button class="purple" onclick="checkPassword()">Login</button>
+    <p id="loginStatus" style="color:#e53935;"></p>
   </div>
 
-  <div id="admin-panel">
-    <h1>Live Poll Results</h1>
-    <div id="results">Loading results...</div>
+  <!-- Controls -->
+  <div id="controls" class="panel" style="display:none;">
+    <h2>Control Actions</h2>
+    <button class="red" onclick="confirmResetVotes()">Reset All Votes</button>
+    <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
+    <button class="green" onclick="downloadCSV()">Download CSV</button>
 
-    <div style="margin-top: 25px;">
-      <button class="local-btn" onclick="resetMyVote()">🔁 Reset My Vote</button>
-      <button class="reset-btn" onclick="resetAllVotes()">🧨 Reset All Votes</button>
-    </div>
+    <h2>Live Results</h2>
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>House</th>
+          <th>Votes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
+        <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
+        <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
+        <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
+      </tbody>
+    </table>
 
-    <p style="margin-top:30px; color:#666;">Admin Panel – GNS Inter-House Poll</p>
+    <canvas id="votesChart" width="300" height="300" style="margin-top:25px;"></canvas>
+  </div>
+
+  <div class="footer">
+    <p>Made by GNS Students | Admin Access Only</p>
   </div>
 
   <script>
+    const PASSWORD = "osamabinladen";
+    let chart;
+
     function checkPassword() {
-      const entered = document.getElementById("password").value.trim();
-      if (entered === "Osama") {
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("admin-panel").style.display = "block";
+      const entered = document.getElementById('adminPass').value;
+      if (entered === PASSWORD) {
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('controls').style.display = 'inline-block';
         startLiveResults();
       } else {
-        document.getElementById("login-msg").textContent = "❌ Incorrect password!";
+        document.getElementById('loginStatus').textContent = "❌ Incorrect password!";
       }
     }
 
-    function startLiveResults() {
-      const resultsDiv = document.getElementById("results");
-      db.ref("poll").on("value", snapshot => {
-        const data = snapshot.val() || {};
-        resultsDiv.innerHTML = `
-          <p>🟩 Mithila (Green): <b>${data.optionA || 0}</b></p>
-          <p>🟦 Nalanda (Blue): <b>${data.optionB || 0}</b></p>
-          <p>🟥 Takshashila (Red): <b>${data.optionC || 0}</b></p>
-          <p>🟨 Vikramshila (Yellow): <b>${data.optionD || 0}</b></p>
-        `;
-      });
-    }
-
-    function resetMyVote() {
-      localStorage.removeItem("hasVoted");
-      alert("✅ You can now vote again on this device.");
-    }
-
-    function resetAllVotes() {
+    function confirmResetVotes() {
       if (confirm("⚠️ Are you sure you want to reset ALL votes? This cannot be undone.")) {
         db.ref("poll").set({
           optionA: 0,
@@ -116,8 +164,58 @@
           optionC: 0,
           optionD: 0
         });
-        alert("🧹 All votes have been reset.");
+        alert("✅ All votes have been reset!");
       }
+    }
+
+    function confirmResetHasVoted() {
+      if (confirm("⚠️ This will allow EVERYONE to vote again. Proceed?")) {
+        db.ref("resetFlag").set(Date.now());
+        alert("✅ 'hasVoted' has been reset for everyone!");
+      }
+    }
+
+    function downloadCSV() {
+      db.ref("poll").once("value").then(snapshot => {
+        const data = snapshot.val();
+        const csv = `House,Votes\nGreen House (Mithila),${data.optionA || 0}\nBlue House (Nalanda),${data.optionB || 0}\nRed House (Takshashila),${data.optionC || 0}\nYellow House (Vikramshila),${data.optionD || 0}`;
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "poll_results.csv";
+        link.click();
+      });
+    }
+
+    function startLiveResults() {
+      db.ref("poll").on("value", snapshot => {
+        const data = snapshot.val() || {};
+        const A = data.optionA || 0;
+        const B = data.optionB || 0;
+        const C = data.optionC || 0;
+        const D = data.optionD || 0;
+
+        document.getElementById("aVotes").textContent = A;
+        document.getElementById("bVotes").textContent = B;
+        document.getElementById("cVotes").textContent = C;
+        document.getElementById("dVotes").textContent = D;
+
+        const ctx = document.getElementById("votesChart").getContext("2d");
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: ["Green (Mithila)", "Blue (Nalanda)", "Red (Takshashila)", "Yellow (Vikramshila)"],
+            datasets: [{
+              data: [A, B, C, D],
+              backgroundColor: ["#4CAF50", "#2196F3", "#F44336", "#FFB300"]
+            }]
+          },
+          options: {
+            plugins: { legend: { position: "bottom" } }
+          }
+        });
+      });
     }
   </script>
 </body>
