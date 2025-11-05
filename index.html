@@ -197,12 +197,14 @@
     }
 
     function confirmResetHasVoted() {
-      if (!confirm("⚠️ This will allow EVERYONE to vote again (clears hasVoted). Continue?")) return;
-      db.ref('resetFlag').set(true).then(() => {
-        setTimeout(() => db.ref('resetFlag').remove().catch(() => {}), 1200);
-        alert("'hasVoted' reset trigger sent.");
-      });
-    }
+  if (!confirm("⚠️ This will allow EVERYONE to vote again (clears hasVoted). Continue?")) return;
+
+  // Set a unique timestamp
+  const resetTime = Date.now();
+  db.ref('resetFlag').set(resetTime)
+    .then(() => alert("'hasVoted' reset triggered for all users."));
+}
+
 
     // 🟣 NEW FUNCTION – resets only your own browser’s hasVoted
     function resetMyLocalVote() {
