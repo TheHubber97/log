@@ -13,10 +13,7 @@
       padding: 40px;
       color: #333;
     }
-    h1 {
-      font-size: 2.2em;
-      margin-bottom: 10px;
-    }
+    h1 { font-size: 2.2em; margin-bottom: 10px; }
     .panel {
       background: #fff;
       border-radius: 16px;
@@ -66,22 +63,14 @@
       border-collapse: collapse;
       margin-top: 25px;
     }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-    }
-    th {
-      background-color: #e1bee7;
-    }
-    td {
-      font-weight: 500;
-    }
+    th, td { border: 1px solid #ddd; padding: 10px; }
+    th { background-color: #e1bee7; }
+    td { font-weight: 500; }
   </style>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <!-- Chart.js for pie chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
@@ -117,14 +106,13 @@
     <button class="red" onclick="confirmResetVotes()">Reset All Votes</button>
     <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
     <button class="green" onclick="downloadCSV()">Download CSV</button>
+    <button class="blue" onclick="toggleGeo()">Toggle Geo Restriction</button>
+    <button class="purple" onclick="toggleVoting()">Toggle Voting</button>
 
     <h2>Live Results</h2>
     <table id="resultsTable">
       <thead>
-        <tr>
-          <th>House</th>
-          <th>Votes</th>
-        </tr>
+        <tr><th>House</th><th>Votes</th></tr>
       </thead>
       <tbody>
         <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
@@ -137,49 +125,48 @@
     <canvas id="votesChart" width="300" height="300" style="margin-top:25px;"></canvas>
   </div>
 
-  <div class="footer">
-    <p>Made by GNS Students | Admin Access Only</p>
-  </div>
+  <div class="footer"><p>Made by GNS Students | Admin Access Only</p></div>
 
   <script>
-    const PASSWORD = "6969420";
+    const PASSWORD = "osamabinladen";
     let chart;
 
     function checkPassword() {
-      const entered = document.getElementById('adminPass').value;
+      const entered = document.getElementById("adminPass").value;
       if (entered === PASSWORD) {
-        document.getElementById('loginBox').style.display = 'none';
-        document.getElementById('controls').style.display = 'inline-block';
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("controls").style.display = "inline-block";
         startLiveResults();
       } else {
-        document.getElementById('loginStatus').textContent = "❌ Incorrect password!";
+        document.getElementById("loginStatus").textContent = "❌ Incorrect password!";
       }
     }
 
     function confirmResetVotes() {
-      if (confirm("⚠️ Are you sure you want to reset ALL votes? This cannot be undone.")) {
+      if (confirm("⚠️ Are you sure you want to reset ALL votes?")) {
         db.ref("poll").set({
-          optionA: 0,
-          optionB: 0,
-          optionC: 0,
-          optionD: 0
+          optionA: 0, optionB: 0, optionC: 0, optionD: 0
         });
-        alert("✅ All votes have been reset!");
+        alert("✅ All votes reset!");
       }
     }
 
     function confirmResetHasVoted() {
-      if (confirm("⚠️ This will allow EVERYONE to vote again. Proceed?")) {
+      if (confirm("⚠️ Allow everyone to vote again?")) {
         db.ref("resetFlag").set(Date.now());
-        alert("✅ 'hasVoted' has been reset for everyone!");
+        alert("✅ All 'hasVoted' reset!");
       }
     }
 
     function downloadCSV() {
       db.ref("poll").once("value").then(snapshot => {
-        const data = snapshot.val();
-        const csv = `House,Votes\nGreen House (Mithila),${data.optionA || 0}\nBlue House (Nalanda),${data.optionB || 0}\nRed House (Takshashila),${data.optionC || 0}\nYellow House (Vikramshila),${data.optionD || 0}`;
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const d = snapshot.val();
+        const csv = `House,Votes
+Green (Mithila),${d.optionA || 0}
+Blue (Nalanda),${d.optionB || 0}
+Red (Takshashila),${d.optionC || 0}
+Yellow (Vikramshila),${d.optionD || 0}`;
+        const blob = new Blob([csv], { type: "text/csv" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = "poll_results.csv";
@@ -187,14 +174,26 @@
       });
     }
 
-    function startLiveResults() {
-      db.ref("poll").on("value", snapshot => {
-        const data = snapshot.val() || {};
-        const A = data.optionA || 0;
-        const B = data.optionB || 0;
-        const C = data.optionC || 0;
-        const D = data.optionD || 0;
+    function toggleGeo() {
+      db.ref("settings/geoEnabled").once("value").then(s => {
+        const val = s.val();
+        db.ref("settings/geoEnabled").set(!val);
+        alert(`🌍 Geo restriction is now ${!val ? "ENABLED" : "DISABLED"}`);
+      });
+    }
 
+    function toggleVoting() {
+      db.ref("settings/votingEnabled").once("value").then(s => {
+        const val = s.val();
+        db.ref("settings/votingEnabled").set(!val);
+        alert(`🗳️ Voting is now ${!val ? "ENABLED" : "DISABLED"}`);
+      });
+    }
+
+    function startLiveResults() {
+      db.ref("poll").on("value", snap => {
+        const d = snap.val() || {};
+        const A = d.optionA || 0, B = d.optionB || 0, C = d.optionC || 0, D = d.optionD || 0;
         document.getElementById("aVotes").textContent = A;
         document.getElementById("bVotes").textContent = B;
         document.getElementById("cVotes").textContent = C;
@@ -205,15 +204,13 @@
         chart = new Chart(ctx, {
           type: "pie",
           data: {
-            labels: ["Green (Mithila)", "Blue (Nalanda)", "Red (Takshashila)", "Yellow (Vikramshila)"],
+            labels: ["Green", "Blue", "Red", "Yellow"],
             datasets: [{
               data: [A, B, C, D],
               backgroundColor: ["#4CAF50", "#2196F3", "#F44336", "#FFB300"]
             }]
           },
-          options: {
-            plugins: { legend: { position: "bottom" } }
-          }
+          options: { plugins: { legend: { position: "bottom" } } }
         });
       });
     }
