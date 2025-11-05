@@ -59,7 +59,7 @@
 
     #controls { margin-top: 10px; }
 
-    /* Bigger, centered login box */
+    /* Larger, centered login box */
     #loginBox {
       background: #ede7f6;
       padding: 28px 40px;
@@ -79,11 +79,19 @@
       margin-bottom: 12px;
     }
 
-    /* Smaller pie chart */
+    /* Centering and chart layout */
+    .chart-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
     canvas#votesChart {
-      width: 220px !important;
-      height: 220px !important;
-      margin-top: 20px;
+      width: 340px !important;
+      height: 340px !important;
+      margin-top: 24px;
     }
   </style>
 
@@ -91,6 +99,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
 <body>
   <h1>Admin Control Panel</h1>
@@ -112,17 +121,19 @@
       <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
     </div>
 
-    <h3>Live Results</h3>
-    <table>
-      <thead><tr><th>House</th><th>Votes</th></tr></thead>
-      <tbody>
-        <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
-        <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
-        <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
-        <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
-      </tbody>
-    </table>
-    <canvas id="votesChart"></canvas>
+    <div class="chart-container">
+      <h3>Live Results</h3>
+      <table>
+        <thead><tr><th>House</th><th>Votes</th></tr></thead>
+        <tbody>
+          <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
+          <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
+          <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
+          <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
+        </tbody>
+      </table>
+      <canvas id="votesChart"></canvas>
+    </div>
   </div>
 
   <script>
@@ -142,8 +153,18 @@
 
     const PASSWORD = 'osamabinladen';
     let chart;
-    const geoBtn = document.getElementById('geoBtn');
-    const voteBtn = document.getElementById('voteBtn');
+    let geoBtn, voteBtn;
+
+    window.onload = function() {
+      geoBtn = document.getElementById('geoBtn');
+      voteBtn = document.getElementById('voteBtn');
+      const input = document.getElementById('adminPass');
+      input.addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+          checkPassword();
+        }
+      });
+    }
 
     function checkPassword() {
       const p = document.getElementById('adminPass').value;
@@ -239,10 +260,24 @@ Yellow (Vikramshila),${d.optionD||0}`;
               backgroundColor: ['#4CAF50','#2196F3','#F44336','#FFB300']
             }]
           },
-          options: { plugins: { legend: { position: 'bottom' } } }
+          options: {
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { font: { size: 16 } }
+              },
+              datalabels: {
+                color: '#fff',
+                font: { size: 14, weight: 'bold' },
+                formatter: value => value > 0 ? value : ''
+              }
+            }
+          },
+          plugins: [ChartDataLabels]
         });
       });
     }
   </script>
 </body>
 </html>
+
