@@ -45,6 +45,7 @@
     .green { background: #43a047; }
     .blue { background: #1e88e5; }
     .purple { background: #8e24aa; }
+    .grey { background: #757575; }
 
     table {
       width: 90%;
@@ -59,7 +60,6 @@
 
     #controls { margin-top: 10px; }
 
-    /* Larger, centered login box */
     #loginBox {
       background: #ede7f6;
       padding: 28px 40px;
@@ -79,7 +79,6 @@
       margin-bottom: 12px;
     }
 
-    /* Centering and chart layout */
     .chart-container {
       display: flex;
       flex-direction: column;
@@ -116,6 +115,7 @@
     <div id="controlsInner">
       <button class="red"    onclick="confirmResetVotes()">Reset All Votes</button>
       <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
+      <button class="grey"   onclick="resetMyLocalVote()">Reset My 'hasVoted' Only</button>
       <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
       <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
       <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
@@ -204,6 +204,13 @@
       });
     }
 
+    // 🟣 NEW FUNCTION – resets only your own browser’s hasVoted
+    function resetMyLocalVote() {
+      if (!confirm("Reset your own 'hasVoted' flag on this browser?")) return;
+      localStorage.removeItem('hasVoted');
+      alert("Your local 'hasVoted' flag has been cleared. You can now vote again on this device.");
+    }
+
     async function confirmDownloadCSV() {
       if (!confirm('Download current results as CSV?')) return;
       const snap = await db.ref('poll').once('value');
@@ -280,4 +287,3 @@ Yellow (Vikramshila),${d.optionD||0}`;
   </script>
 </body>
 </html>
-
