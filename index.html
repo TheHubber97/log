@@ -14,14 +14,18 @@
       text-align: center;
       color: #333;
     }
+
     .panel {
       display: inline-block;
       background: white;
       padding: 24px;
       border-radius: 14px;
       box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      margin-top: 20px;
     }
+
     h1 { margin-bottom: 6px; }
+
     button {
       display: block;
       width: 280px;
@@ -32,25 +36,54 @@
       color: #fff;
       cursor: pointer;
       font-size: 15px;
-      transition: background 0.25s;
+      transition: background 0.25s, transform 0.15s;
     }
+    button:hover { transform: scale(1.04); opacity: 0.9; }
+
     .red { background: #e53935; }
     .orange { background: #fb8c00; }
     .green { background: #43a047; }
     .blue { background: #1e88e5; }
     .purple { background: #8e24aa; }
-    button:hover { opacity: 0.9; }
 
-    table { width: 90%; margin: 18px auto; border-collapse: collapse; }
-    th, td { padding: 10px; border: 1px solid #ddd; }
+    table {
+      width: 90%;
+      margin: 18px auto;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
     th { background: #e1bee7; }
 
     #controls { margin-top: 10px; }
+
+    /* Bigger, centered login box */
     #loginBox {
       background: #ede7f6;
-      padding: 16px;
-      border-radius: 10px;
+      padding: 28px 40px;
+      border-radius: 16px;
       display: inline-block;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+      min-width: 340px;
+      font-size: 1.1em;
+      margin-top: 60px;
+    }
+    #loginBox input {
+      padding: 10px;
+      width: 220px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      font-size: 1em;
+      margin-bottom: 12px;
+    }
+
+    /* Smaller pie chart */
+    canvas#votesChart {
+      width: 220px !important;
+      height: 220px !important;
+      margin-top: 20px;
     }
   </style>
 
@@ -89,11 +122,11 @@
         <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
       </tbody>
     </table>
-    <canvas id="votesChart" width="320" height="320"></canvas>
+    <canvas id="votesChart"></canvas>
   </div>
 
   <script>
-    // Firebase config (same as voter)
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
       authDomain: "live-poll-gns.firebaseapp.com",
@@ -124,7 +157,6 @@
       }
     }
 
-    // Sync labels from Firebase
     async function syncButtonLabels() {
       const [geoSnap, voteSnap] = await Promise.all([
         db.ref('settings/geoEnabled').once('value'),
@@ -137,14 +169,12 @@
       voteBtn.textContent = voteEnabled ? "Disable Voting" : "Enable Voting";
     }
 
-    // Reset Votes
     function confirmResetVotes() {
       if (!confirm('⚠️ Reset ALL votes? This cannot be undone.')) return;
       db.ref('poll').set({ optionA:0, optionB:0, optionC:0, optionD:0 });
       alert('All votes reset.');
     }
 
-    // Reset 'hasVoted'
     function confirmResetHasVoted() {
       if (!confirm("⚠️ This will allow EVERYONE to vote again (clears hasVoted). Continue?")) return;
       db.ref('resetFlag').set(true).then(() => {
@@ -153,7 +183,6 @@
       });
     }
 
-    // Download CSV
     async function confirmDownloadCSV() {
       if (!confirm('Download current results as CSV?')) return;
       const snap = await db.ref('poll').once('value');
@@ -170,7 +199,6 @@ Yellow (Vikramshila),${d.optionD||0}`;
       a.click();
     }
 
-    // Toggle Geo Restriction
     async function confirmToggleGeo() {
       const snap = await db.ref('settings/geoEnabled').once('value');
       const cur = snap.exists() ? snap.val() : false;
@@ -181,7 +209,6 @@ Yellow (Vikramshila),${d.optionD||0}`;
       alert(`Geo restriction ${newState ? 'enabled' : 'disabled'}.`);
     }
 
-    // Toggle Voting
     async function confirmToggleVoting() {
       const snap = await db.ref('settings/votingEnabled').once('value');
       const cur = snap.exists() ? snap.val() : false;
@@ -192,7 +219,6 @@ Yellow (Vikramshila),${d.optionD||0}`;
       alert(`Voting ${newState ? 'enabled' : 'disabled'}.`);
     }
 
-    // Live Results + Pie Chart
     function startLiveResults() {
       db.ref('poll').on('value', snap => {
         const d = snap.val() || {};
