@@ -2,290 +2,221 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Admin Control Panel</title>
+  <title>House Display Poll</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="gns.PNG" />
   <style>
+    :root {
+      --lav: #E6E6FA;
+      --info-bg: #fff8dc;
+    }
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #f3e5f5;
-      margin: 0;
-      padding: 40px;
+      background: var(--lav);
       text-align: center;
+      padding: 40px;
       color: #333;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards;
     }
-
-    .panel {
+    @keyframes fadeIn { to { opacity: 1; } }
+    .info-box {
       display: inline-block;
-      background: white;
-      padding: 24px;
-      border-radius: 14px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-      margin-top: 20px;
+      background: var(--info-bg);
+      border-left: 6px solid #f57c00;
+      padding: 15px 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 480px;
+      margin-bottom: 20px;
     }
-
-    h1 { margin-bottom: 6px; }
-
-    button {
-      display: block;
-      width: 280px;
-      margin: 10px auto;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      font-size: 15px;
-      transition: background 0.25s, transform 0.15s;
+    h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; color: #555; margin-bottom: 18px; }
+    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; }
+    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+    .vote-buttons {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+      transition: opacity .6s ease, transform .3s ease;
     }
-    button:hover { transform: scale(1.04); opacity: 0.9; }
-
-    .red { background: #e53935; }
-    .orange { background: #fb8c00; }
-    .green { background: #43a047; }
-    .blue { background: #1e88e5; }
-    .purple { background: #8e24aa; }
-    .grey { background: #757575; }
-
-    table {
-      width: 90%;
-      margin: 18px auto;
-      border-collapse: collapse;
+    .vote-buttons.hidden { opacity: 0; transform: translateY(6px); pointer-events: none; }
+    .vote-btn {
+      min-width: 220px; padding: 14px;
+      border-radius: 12px; border: none; font-size: 1.02rem;
+      color: #fff; cursor: pointer;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+      transition: transform .15s ease, opacity .25s ease;
     }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-    }
-    th { background: #e1bee7; }
-
-    #controls { margin-top: 10px; }
-
-    #loginBox {
-      background: #ede7f6;
-      padding: 28px 40px;
-      border-radius: 16px;
-      display: inline-block;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-      min-width: 340px;
-      font-size: 1.1em;
-      margin-top: 60px;
-    }
-    #loginBox input {
-      padding: 10px;
-      width: 220px;
-      border-radius: 6px;
-      border: 1px solid #bbb;
-      font-size: 1em;
-      margin-bottom: 12px;
-    }
-
-    .chart-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin-top: 30px;
-    }
-
-    canvas#votesChart {
-      width: 340px !important;
-      height: 340px !important;
-      margin-top: 24px;
-    }
+    .vote-btn:hover { transform: scale(1.03); }
+    .green { background: #4CAF50; }
+    .blue { background: #2196F3; }
+    .red { background: #F44336; }
+    .yellow { background: #FFB300; color: #222; }
+    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
   </style>
 
-  <!-- Firebase + Chart.js -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
 <body>
-  <h1>Admin Control Panel</h1>
+  <h1>Inter-House Poll</h1>
+  <h2>Which House Display did you like the best?</h2>
 
-  <div id="loginBox">
-    <p><strong>Enter Admin Password</strong></p>
-    <input id="adminPass" type="password" placeholder="Password" />
-    <button class="purple" onclick="checkPassword()">Login</button>
-    <p id="loginStatus" style="color:#c62828"></p>
+  <div class="info-box">Vote for the House Display you liked best, and deserves your vote — not just your child's house.</div>
+
+  <p id="poll-status">Choose your favourite house below:</p>
+  <p id="location-info"></p>
+
+  <div class="vote-buttons" id="voteButtons">
+    <button class="vote-btn green" data-option="optionA">Green House (Mithila)</button>
+    <button class="vote-btn blue" data-option="optionB">Blue House (Nalanda)</button>
+    <button class="vote-btn red" data-option="optionC">Red House (Takshashila)</button>
+    <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
   </div>
 
-  <div id="controls" class="panel" style="display:none">
-    <h2>Control Actions</h2>
-    <div id="controlsInner">
-      <button class="red"    onclick="confirmResetVotes()">Reset All Votes</button>
-      <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
-      <button class="grey"   onclick="resetMyLocalVote()">Reset My 'hasVoted' Only</button>
-      <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
-      <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
-      <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
-    </div>
+  <div class="footer">Made by the students of GNS — Vamsi, Govardan, Kevin</div>
 
-    <div class="chart-container">
-      <h3>Live Results</h3>
-      <table>
-        <thead><tr><th>House</th><th>Votes</th></tr></thead>
-        <tbody>
-          <tr><td>Green House (Mithila)</td><td id="aVotes">0</td></tr>
-          <tr><td>Blue House (Nalanda)</td><td id="bVotes">0</td></tr>
-          <tr><td>Red House (Takshashila)</td><td id="cVotes">0</td></tr>
-          <tr><td>Yellow House (Vikramshila)</td><td id="dVotes">0</td></tr>
-        </tbody>
-      </table>
-      <canvas id="votesChart"></canvas>
-    </div>
-  </div>
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
+    authDomain: "live-poll-gns.firebaseapp.com",
+    databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "live-poll-gns",
+    storageBucket: "live-poll-gns.firebasestorage.app",
+    messagingSenderId: "217106845763",
+    appId: "1:217106845763:web:ba85010fe1a630aae344f6",
+    measurementId: "G-8TC1WSCRB6"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-  <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
-      authDomain: "live-poll-gns.firebaseapp.com",
-      databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "live-poll-gns",
-      storageBucket: "live-poll-gns.firebasestorage.app",
-      messagingSenderId: "217106845763",
-      appId: "1:217106845763:web:ba85010fe1a630aae344f6",
-      measurementId: "G-8TC1WSCRB6"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  const allowedLat = 13.029947040832479;
+  const allowedLng = 77.73874056820479;
+  const allowedRadiusKm = 1;
 
-    const PASSWORD = 'osamabinladen';
-    let chart;
-    let geoBtn, voteBtn;
+  const settingsRef = db.ref('settings');
+  let geoEnabled = true;
+  let votingEnabled = true;
 
-    window.onload = function() {
-      geoBtn = document.getElementById('geoBtn');
-      voteBtn = document.getElementById('voteBtn');
-      const input = document.getElementById('adminPass');
-      input.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") {
-          checkPassword();
-        }
-      });
-    }
+  settingsRef.on('value', snap => {
+    const s = snap.val() || {};
+    geoEnabled = (s.geoEnabled !== false);
+    votingEnabled = (s.votingEnabled !== false);
+    updateVotingUI();
+  });
 
-    function checkPassword() {
-      const p = document.getElementById('adminPass').value;
-      if (p === PASSWORD) {
-        document.getElementById('loginBox').style.display = 'none';
-        document.getElementById('controls').style.display = 'block';
-        startLiveResults();
-        syncButtonLabels();
+  function updateVotingUI(){
+    const btns = document.querySelectorAll('.vote-btn');
+    const status = document.getElementById('poll-status');
+    if(!votingEnabled){
+      btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
+      status.textContent = '🚫 Voting is currently disabled by the admin.';
+    } else {
+      if(localStorage.getItem('hasVoted') === 'true'){
+        btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
+        status.textContent = ' You’ve already voted. Thank you!';
+        hideVoteButtons();
       } else {
-        document.getElementById('loginStatus').textContent = 'Incorrect password';
+        btns.forEach(b=>{ b.disabled = false; b.style.opacity = 1; });
+        status.textContent = 'Choose your favourite house below:';
+        showVoteButtons();
       }
     }
+  }
 
-    async function syncButtonLabels() {
-      const [geoSnap, voteSnap] = await Promise.all([
-        db.ref('settings/geoEnabled').once('value'),
-        db.ref('settings/votingEnabled').once('value')
-      ]);
-      const geoEnabled = geoSnap.exists() ? geoSnap.val() : false;
-      const voteEnabled = voteSnap.exists() ? voteSnap.val() : false;
+  function toRad(v){ return v * Math.PI / 180; }
+  function haversineKm(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
 
-      geoBtn.textContent = geoEnabled ? "Disable Geo Restriction" : "Enable Geo Restriction";
-      voteBtn.textContent = voteEnabled ? "Disable Voting" : "Enable Voting";
+  function recordVote(option){
+    const optRef = db.ref('poll/' + option);
+    optRef.transaction(current => (current || 0) + 1);
+    localStorage.setItem('hasVoted','true');
+    document.getElementById('poll-status').textContent = ' Vote recorded! Thank you for voting.';
+    hideVoteButtons();
+  }
+
+  function attemptVote(button){
+    if(!votingEnabled){
+      alert('Voting is disabled by the admin.');
+      return;
+    }
+    if(localStorage.getItem('hasVoted') === 'true'){
+      alert('You have already voted on this device.');
+      return;
     }
 
-    function confirmResetVotes() {
-      if (!confirm('⚠️ Reset ALL votes? This cannot be undone.')) return;
-      db.ref('poll').set({ optionA:0, optionB:0, optionC:0, optionD:0 });
-      alert('All votes reset.');
+    const option = button.getAttribute('data-option');
+
+    if(!geoEnabled){
+      if(confirm('Confirm vote for this option?')) recordVote(option);
+      return;
     }
 
-    function confirmResetHasVoted() {
-  if (!confirm("⚠️ This will allow EVERYONE to vote again (clears hasVoted). Continue?")) return;
+    if(!navigator.geolocation){
+      alert('Geolocation not supported.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      const dist = haversineKm(lat, lon, allowedLat, allowedLng);
+      document.getElementById('location-info').textContent =
+        `Your Location: ${lat.toFixed(5)}, ${lon.toFixed(5)} — ${dist.toFixed(2)} km from venue`;
+      if(dist <= allowedRadiusKm){
+        if(confirm('Confirm vote for this option?')) recordVote(option);
+      } else alert('You are too far from the venue to vote.');
+    }, ()=>alert('Please allow location access to vote.'), {timeout:10000});
+  }
 
-  // Set a unique timestamp
-  const resetTime = Date.now();
-  db.ref('resetFlag').set(resetTime)
-    .then(() => alert("'hasVoted' reset triggered for all users."));
-}
+  function hideVoteButtons(){
+    const vb = document.getElementById('voteButtons');
+    vb.classList.add('hidden');
+    setTimeout(()=>{ vb.style.display='none'; }, 650);
+  }
+  function showVoteButtons(){
+    const vb = document.getElementById('voteButtons');
+    vb.style.display='flex';
+    requestAnimationFrame(()=> vb.classList.remove('hidden'));
+  }
 
+  // Attach listeners to vote buttons
+  document.querySelectorAll('.vote-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> attemptVote(btn));
+  });
 
-    // 🟣 NEW FUNCTION – resets only your own browser’s hasVoted
-    function resetMyLocalVote() {
-      if (!confirm("Reset your own 'hasVoted' flag on this browser?")) return;
+  // --- Final fixed reset flag logic ---
+  let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
+
+  // 1. On page load, check reset status
+  db.ref('resetFlag').once('value').then(snap => {
+    const v = snap.val();
+    if (v && v !== lastResetSeen) {
       localStorage.removeItem('hasVoted');
-      alert("Your local 'hasVoted' flag has been cleared. You can now vote again on this device.");
+      localStorage.setItem('lastResetSeen', v);
+      document.getElementById('poll-status').textContent = 'Voting reset by admin — you can vote again!';
+      showVoteButtons();
     }
+  });
 
-    async function confirmDownloadCSV() {
-      if (!confirm('Download current results as CSV?')) return;
-      const snap = await db.ref('poll').once('value');
-      const d = snap.val() || {};
-      const csv = `House,Votes
-Green (Mithila),${d.optionA||0}
-Blue (Nalanda),${d.optionB||0}
-Red (Takshashila),${d.optionC||0}
-Yellow (Vikramshila),${d.optionD||0}`;
-      const blob = new Blob([csv], { type:'text/csv' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'poll_results.csv';
-      a.click();
+  // 2. Real-time listener for future resets
+  db.ref('resetFlag').on('value', snap => {
+    const v = snap.val();
+    if (v && v !== lastResetSeen) {
+      localStorage.removeItem('hasVoted');
+      localStorage.setItem('lastResetSeen', v);
+      document.getElementById('poll-status').textContent = 'Voting reset by admin — you can vote again!';
+      showVoteButtons();
+      lastResetSeen = v;
     }
+  });
 
-    async function confirmToggleGeo() {
-      const snap = await db.ref('settings/geoEnabled').once('value');
-      const cur = snap.exists() ? snap.val() : false;
-      const newState = !cur;
-      if (!confirm(`Are you sure you want to ${cur ? 'DISABLE' : 'ENABLE'} geo restriction?`)) return;
-      await db.ref('settings/geoEnabled').set(newState);
-      geoBtn.textContent = newState ? "Disable Geo Restriction" : "Enable Geo Restriction";
-      alert(`Geo restriction ${newState ? 'enabled' : 'disabled'}.`);
-    }
-
-    async function confirmToggleVoting() {
-      const snap = await db.ref('settings/votingEnabled').once('value');
-      const cur = snap.exists() ? snap.val() : false;
-      const newState = !cur;
-      if (!confirm(`Are you sure you want to ${cur ? 'DISABLE' : 'ENABLE'} voting?`)) return;
-      await db.ref('settings/votingEnabled').set(newState);
-      voteBtn.textContent = newState ? "Disable Voting" : "Enable Voting";
-      alert(`Voting ${newState ? 'enabled' : 'disabled'}.`);
-    }
-
-    function startLiveResults() {
-      db.ref('poll').on('value', snap => {
-        const d = snap.val() || {};
-        const A = d.optionA||0, B = d.optionB||0, C = d.optionC||0, D = d.optionD||0;
-        document.getElementById('aVotes').textContent = A;
-        document.getElementById('bVotes').textContent = B;
-        document.getElementById('cVotes').textContent = C;
-        document.getElementById('dVotes').textContent = D;
-
-        const ctx = document.getElementById('votesChart').getContext('2d');
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels: ['Green (Mithila)','Blue (Nalanda)','Red (Takshashila)','Yellow (Vikramshila)'],
-            datasets: [{
-              data: [A,B,C,D],
-              backgroundColor: ['#4CAF50','#2196F3','#F44336','#FFB300']
-            }]
-          },
-          options: {
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: { font: { size: 25 } }
-              },
-              datalabels: {
-                color: '#fff',
-                font: { size: 14, weight: 'bold' },
-                formatter: value => value > 0 ? value : ''
-              }
-            }
-          },
-          plugins: [ChartDataLabels]
-        });
-      });
-    }
-  </script>
+  updateVotingUI();
+</script>
 </body>
 </html>
