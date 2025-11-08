@@ -71,7 +71,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const PASSWORD = 'osamabinladen';
+    const PASSWORD = 'osamaabinladen';
     let questionBtn;
 
     window.onload = function() {
@@ -92,21 +92,21 @@
     async function syncButtonLabels() {
       const snap = await db.ref('settings/questionText').once('value');
       const current = snap.val();
-      const isAwooo = current === "Awooo";
-      questionBtn.textContent = isAwooo ? "Change question back to original" : "Change question to 'Awooo'";
+      const isAwooo = current === "Which house had the best march past?";
+      questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
     }
 
     async function confirmToggleQuestion() {
       const snap = await db.ref('settings/questionText').once('value');
       const currentQ = snap.val();
-      const isAwooo = currentQ === "Awooo";
+      const isAwooo = currentQ === "Which house had the best march past?";
 
       const newQuestion = isAwooo
         ? "Which House Display did you like the best?"
-        : "Awooo";
+        : "Which house had the best march past?";
       const newInfo = isAwooo
         ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
-        : "aweee";
+        : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
 
       await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
       alert("Question changed successfully!");
