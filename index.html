@@ -26,6 +26,8 @@
     .blue { background: #1e88e5; }
     .purple { background: #8e24aa; }
     .grey { background: #757575; }
+    #chartContainer { margin-top: 40px; display: flex; justify-content: center; }
+    canvas { max-width: 480px; max-height: 480px; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -54,6 +56,10 @@
       <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
       <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
     </div>
+
+    <div id="chartContainer">
+      <canvas id="voteChart"></canvas>
+    </div>
   </div>
 
   <script>
@@ -72,6 +78,7 @@
 
     const PASSWORD = 'osamaabinladen';
     let questionBtn;
+    let chart;
 
     window.onload = function() {
       questionBtn = document.getElementById('questionBtn');
@@ -85,6 +92,7 @@
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('controls').style.display = 'block';
         syncButtonLabels();
+        initChart();
       } else document.getElementById('loginStatus').textContent = 'Incorrect password';
     }
 
@@ -169,6 +177,42 @@
       await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
       alert("Question changed successfully!");
       syncButtonLabels();
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('voteChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Green House (Mithila)', 'Blue House (Nalanda)', 'Red House (Takshashila)', 'Yellow House (Vikramshila)'],
+          datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: ['#4CAF50', '#2196F3', '#F44336', '#FFEB3B']
+          }]
+        },
+        options: {
+          plugins: {
+            datalabels: {
+              color: '#000',
+              formatter: (val) => val,
+              font: { weight: 'bold', size: 14 }
+            },
+            legend: { position: 'bottom' }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+
+      db.ref('poll').on('value', snap => {
+        const d = snap.val() || {};
+        chart.data.datasets[0].data = [
+          d.optionA || 0,
+          d.optionB || 0,
+          d.optionC || 0,
+          d.optionD || 0
+        ];
+        chart.update();
+      });
     }
   </script>
 </body>
