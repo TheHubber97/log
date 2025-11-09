@@ -14,11 +14,26 @@
       text-align: center;
       color: #333;
     }
-    .panel { display: inline-block; background: white; padding: 24px; border-radius: 14px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12); margin-top: 20px; }
-    button { display: block; width: 280px; margin: 10px auto; padding: 12px; border-radius: 8px;
-      border: none; color: #fff; cursor: pointer; font-size: 15px;
-      transition: background 0.25s, transform 0.15s; }
+    .panel {
+      display: inline-block;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      margin-top: 20px;
+    }
+    button {
+      display: block;
+      width: 280px;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.25s, transform 0.15s;
+    }
     button:hover { transform: scale(1.04); opacity: 0.9; }
     .red { background: #e53935; }
     .orange { background: #fb8c00; }
@@ -26,8 +41,24 @@
     .blue { background: #1e88e5; }
     .purple { background: #8e24aa; }
     .grey { background: #757575; }
-    #chartContainer { margin-top: 40px; display: flex; justify-content: center; }
-    canvas { max-width: 480px; max-height: 480px; }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 80%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: center;
+    }
+    th {
+      background: #8e24aa;
+      color: white;
+    }
+    #chartContainer {
+      width: 80%;
+      margin: 20px auto;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -57,8 +88,17 @@
       <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
     </div>
 
+    <!-- Live results and chart -->
+    <h2 style="margin-top:30px;">Live Results</h2>
+    <table id="resultsTable">
+      <thead>
+        <tr><th>House</th><th>Votes</th></tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+
     <div id="chartContainer">
-      <canvas id="voteChart"></canvas>
+      <canvas id="resultsChart"></canvas>
     </div>
   </div>
 
@@ -77,8 +117,7 @@
     const db = firebase.database();
 
     const PASSWORD = 'osamaabinladen';
-    let questionBtn;
-    let chart;
+    let chart, questionBtn;
 
     window.onload = function() {
       questionBtn = document.getElementById('questionBtn');
@@ -92,74 +131,15 @@
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('controls').style.display = 'block';
         syncButtonLabels();
-        initChart();
+        startListeningForResults();
       } else document.getElementById('loginStatus').textContent = 'Incorrect password';
     }
 
     async function syncButtonLabels() {
-      const settingsSnap = await db.ref('settings').once('value');
-      const s = settingsSnap.val() || {};
-
-      document.getElementById('geoBtn').textContent = s.geoEnabled === false ? 'Enable Geo Restriction' : 'Disable Geo Restriction';
-      document.getElementById('voteBtn').textContent = s.votingEnabled === false ? 'Enable Voting' : 'Disable Voting';
-
-      const current = s.questionText;
+      const snap = await db.ref('settings/questionText').once('value');
+      const current = snap.val();
       const isAwooo = current === "Which house had the best march past?";
       questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
-    }
-
-    async function confirmToggleGeo() {
-      const settingsSnap = await db.ref('settings/geoEnabled').once('value');
-      const current = settingsSnap.val() !== false;
-      const newState = !current;
-      if (confirm(`Are you sure you want to ${newState ? 'enable' : 'disable'} geo restriction?`)) {
-        await db.ref('settings').update({ geoEnabled: newState });
-        syncButtonLabels();
-      }
-    }
-
-    async function confirmToggleVoting() {
-      const settingsSnap = await db.ref('settings/votingEnabled').once('value');
-      const current = settingsSnap.val() !== false;
-      const newState = !current;
-      if (confirm(`Are you sure you want to ${newState ? 'enable' : 'disable'} voting?`)) {
-        await db.ref('settings').update({ votingEnabled: newState });
-        syncButtonLabels();
-      }
-    }
-
-    async function confirmResetVotes() {
-      if (!confirm("Are you sure you want to reset ALL votes?")) return;
-      await db.ref('poll').set({ optionA: 0, optionB: 0, optionC: 0, optionD: 0 });
-      alert("All votes reset successfully!");
-    }
-
-    async function confirmResetHasVoted() {
-      if (!confirm("Are you sure you want to reset all server-side 'hasVoted' records?")) return;
-      await db.ref('tokens').set({});
-      const newFlag = Date.now().toString();
-      await db.ref('resetFlag').set(newFlag);
-      alert("All 'hasVoted' tokens reset successfully!");
-    }
-
-    function resetMyLocalVote() {
-      localStorage.removeItem('hasVoted');
-      alert("Local vote reset. You can vote again on this device.");
-    }
-
-    async function confirmDownloadCSV() {
-      const snap = await db.ref('poll').once('value');
-      const data = snap.val() || {};
-      const rows = [['Option', 'Votes']];
-      for (let key in data) rows.push([key, data[key]]);
-      const csvContent = rows.map(r => r.join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'poll_results.csv';
-      a.click();
-      URL.revokeObjectURL(url);
     }
 
     async function confirmToggleQuestion() {
@@ -179,40 +159,51 @@
       syncButtonLabels();
     }
 
-    function initChart() {
-      const ctx = document.getElementById('voteChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['Green House (Mithila)', 'Blue House (Nalanda)', 'Red House (Takshashila)', 'Yellow House (Vikramshila)'],
-          datasets: [{
-            data: [0, 0, 0, 0],
-            backgroundColor: ['#4CAF50', '#2196F3', '#F44336', '#FFEB3B']
-          }]
-        },
-        options: {
-          plugins: {
-            datalabels: {
-              color: '#000',
-              formatter: (val) => val,
-              font: { weight: 'bold', size: 14 }
-            },
-            legend: { position: 'bottom' }
-          }
-        },
-        plugins: [ChartDataLabels]
+    // ---------------- LIVE RESULTS + CHART ----------------
+    function startListeningForResults() {
+      db.ref('votes').on('value', snap => {
+        const data = snap.val() || {};
+        const counts = {};
+        Object.values(data).forEach(v => counts[v] = (counts[v] || 0) + 1);
+        updateResults(counts);
+      });
+    }
+
+    function updateResults(counts) {
+      const tbody = document.getElementById('resultsBody');
+      tbody.innerHTML = '';
+      const labels = Object.keys(counts);
+      const values = Object.values(counts);
+
+      labels.forEach(house => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${house}</td><td>${counts[house]}</td>`;
+        tbody.appendChild(tr);
       });
 
-      db.ref('poll').on('value', snap => {
-        const d = snap.val() || {};
-        chart.data.datasets[0].data = [
-          d.optionA || 0,
-          d.optionB || 0,
-          d.optionC || 0,
-          d.optionD || 0
-        ];
+      if (!chart) {
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: ['#e53935','#1e88e5','#43a047','#fdd835','#8e24aa']
+            }]
+          },
+          options: {
+            plugins: {
+              datalabels: { color: '#fff', font: { weight: 'bold' } },
+              legend: { position: 'bottom' }
+            }
+          }
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
         chart.update();
-      });
+      }
     }
   </script>
 </body>
