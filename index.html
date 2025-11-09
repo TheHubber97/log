@@ -41,6 +41,7 @@
     .blue { background: #1e88e5; }
     .purple { background: #8e24aa; }
     .grey { background: #757575; }
+
     table {
       margin: 20px auto;
       border-collapse: collapse;
@@ -54,6 +55,10 @@
     th {
       background: #8e24aa;
       color: white;
+    }
+    tr.leader {
+      background-color: #c8e6c9 !important;
+      font-weight: bold;
     }
     #chartContainer {
       width: 80%;
@@ -172,11 +177,14 @@
     function updateResults(counts) {
       const tbody = document.getElementById('resultsBody');
       tbody.innerHTML = '';
+
       const labels = Object.keys(counts);
       const values = Object.values(counts);
+      const maxVotes = Math.max(...values, 0);
 
       labels.forEach(house => {
         const tr = document.createElement('tr');
+        if (counts[house] === maxVotes && maxVotes > 0) tr.classList.add('leader');
         tr.innerHTML = `<td>${house}</td><td>${counts[house]}</td>`;
         tbody.appendChild(tr);
       });
