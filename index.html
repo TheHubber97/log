@@ -52,7 +52,6 @@
       <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
       <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
       <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
-      <!-- 🟣 NEW BUTTON: Toggle Question -->
       <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
     </div>
   </div>
@@ -90,10 +89,69 @@
     }
 
     async function syncButtonLabels() {
-      const snap = await db.ref('settings/questionText').once('value');
-      const current = snap.val();
+      const settingsSnap = await db.ref('settings').once('value');
+      const s = settingsSnap.val() || {};
+
+      document.getElementById('geoBtn').textContent = s.geoEnabled === false ? 'Enable Geo Restriction' : 'Disable Geo Restriction';
+      document.getElementById('voteBtn').textContent = s.votingEnabled === false ? 'Enable Voting' : 'Disable Voting';
+
+      const current = s.questionText;
       const isAwooo = current === "Which house had the best march past?";
       questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
+    }
+
+    async function confirmToggleGeo() {
+      const settingsSnap = await db.ref('settings/geoEnabled').once('value');
+      const current = settingsSnap.val() !== false;
+      const newState = !current;
+      if (confirm(`Are you sure you want to ${newState ? 'enable' : 'disable'} geo restriction?`)) {
+        await db.ref('settings').update({ geoEnabled: newState });
+        syncButtonLabels();
+      }
+    }
+
+    async function confirmToggleVoting() {
+      const settingsSnap = await db.ref('settings/votingEnabled').once('value');
+      const current = settingsSnap.val() !== false;
+      const newState = !current;
+      if (confirm(`Are you sure you want to ${newState ? 'enable' : 'disable'} voting?`)) {
+        await db.ref('settings').update({ votingEnabled: newState });
+        syncButtonLabels();
+      }
+    }
+
+    async function confirmResetVotes() {
+      if (!confirm("Are you sure you want to reset ALL votes?")) return;
+      await db.ref('poll').set({ optionA: 0, optionB: 0, optionC: 0, optionD: 0 });
+      alert("All votes reset successfully!");
+    }
+
+    async function confirmResetHasVoted() {
+      if (!confirm("Are you sure you want to reset all server-side 'hasVoted' records?")) return;
+      await db.ref('tokens').set({});
+      const newFlag = Date.now().toString();
+      await db.ref('resetFlag').set(newFlag);
+      alert("All 'hasVoted' tokens reset successfully!");
+    }
+
+    function resetMyLocalVote() {
+      localStorage.removeItem('hasVoted');
+      alert("Local vote reset. You can vote again on this device.");
+    }
+
+    async function confirmDownloadCSV() {
+      const snap = await db.ref('poll').once('value');
+      const data = snap.val() || {};
+      const rows = [['Option', 'Votes']];
+      for (let key in data) rows.push([key, data[key]]);
+      const csvContent = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'poll_results.csv';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     async function confirmToggleQuestion() {
