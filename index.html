@@ -27,20 +27,25 @@
     .purple { background: #8e24aa; }
     .grey { background: #757575; }
     table {
+      width: 80%;
+      margin: 25px auto;
       border-collapse: collapse;
-      width: 100%;
-      margin-top: 15px;
+      text-align: center;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 10px;
     }
     th {
-      background-color: #f2f2f2;
+      background: #8e24aa;
+      color: white;
     }
-    canvas {
-      max-width: 400px;
-      margin-top: 20px;
+    #results {
+      margin-top: 30px;
+    }
+    #chartContainer {
+      width: 60%;
+      margin: 30px auto;
     }
   </style>
 
@@ -71,12 +76,21 @@
       <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
     </div>
 
-    <h2>Live Results</h2>
-    <table id="resultsTable">
-      <thead><tr><th>House</th><th>Votes</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <canvas id="voteChart"></canvas>
+    <div id="results">
+      <h2>Live Results</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>House</th>
+            <th>Votes</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div id="chartContainer">
+        <canvas id="resultsChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -94,14 +108,13 @@
     const db = firebase.database();
 
     const PASSWORD = 'osamaabinladen';
-    let chart;
-    let questionBtn;
+    let chart, questionBtn;
 
     window.onload = function() {
       questionBtn = document.getElementById('questionBtn');
       const input = document.getElementById('adminPass');
       input.addEventListener("keypress", e => { if (e.key === "Enter") checkPassword(); });
-    }
+    };
 
     function checkPassword() {
       const p = document.getElementById('adminPass').value;
@@ -109,7 +122,7 @@
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('controls').style.display = 'block';
         syncButtonLabels();
-        setupLiveResults();
+        startLiveResults();
       } else document.getElementById('loginStatus').textContent = 'Incorrect password';
     }
 
@@ -124,62 +137,88 @@
       const snap = await db.ref('settings/questionText').once('value');
       const currentQ = snap.val();
       const isAwooo = currentQ === "Which house had the best march past?";
-
       const newQuestion = isAwooo
         ? "Which House Display did you like the best?"
         : "Which house had the best march past?";
       const newInfo = isAwooo
         ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
         : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
-
       await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
       alert("Question changed successfully!");
       syncButtonLabels();
     }
 
-    function setupLiveResults() {
-      const tableBody = document.querySelector("#resultsTable tbody");
-      const ctx = document.getElementById('voteChart').getContext('2d');
-
-      db.ref("votes").on("value", snapshot => {
-        const votes = snapshot.val() || {};
-        const labels = Object.keys(votes);
-        const data = Object.values(votes);
-
-        tableBody.innerHTML = labels.map((h, i) =>
-          `<tr><td>${h}</td><td>${data[i]}</td></tr>`
-        ).join("");
-
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels,
-            datasets: [{
-              data,
-              backgroundColor: ['#e53935', '#1e88e5', '#43a047', '#fbc02d', '#8e24aa']
-            }]
-          },
-          options: {
-            plugins: {
-              datalabels: {
-                color: '#fff',
-                formatter: val => val
-              },
-              legend: { position: 'bottom' }
-            }
-          }
-        });
+    function confirmResetVotes() {
+      if (confirm("Reset ALL votes?")) db.ref('poll').set({optionA:0,optionB:0,optionC:0,optionD:0});
+    }
+    function confirmResetHasVoted() {
+      if (confirm("Reset all 'hasVoted'?")) db.ref('resetFlag').set(Date.now());
+    }
+    function resetMyLocalVote() {
+      localStorage.removeItem('hasVoted');
+      alert("Local vote status cleared.");
+    }
+    function confirmDownloadCSV() {
+      db.ref('poll').once('value', snap => {
+        const d = snap.val() || {};
+        const csv = "House,Votes\nGreen,"+ (d.optionA||0) +"\nBlue,"+ (d.optionB||0) +"\nRed,"+ (d.optionC||0) +"\nYellow,"+ (d.optionD||0);
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = "poll_results.csv";
+        link.click();
+      });
+    }
+    function confirmToggleGeo() {
+      db.ref('settings/geoEnabled').once('value').then(snap=>{
+        const val = !(snap.val());
+        db.ref('settings/geoEnabled').set(val);
+        document.getElementById('geoBtn').textContent = val ? "Disable Geo Restriction" : "Enable Geo Restriction";
+      });
+    }
+    function confirmToggleVoting() {
+      db.ref('settings/votingEnabled').once('value').then(snap=>{
+        const val = !(snap.val());
+        db.ref('settings/votingEnabled').set(val);
+        document.getElementById('voteBtn').textContent = val ? "Disable Voting" : "Enable Voting";
       });
     }
 
-    // Placeholder button functions (same names for compatibility)
-    function confirmResetVotes() { alert("Votes reset triggered"); }
-    function confirmResetHasVoted() { alert("'hasVoted' reset triggered"); }
-    function resetMyLocalVote() { alert("Local 'hasVoted' reset"); }
-    function confirmDownloadCSV() { alert("CSV download started"); }
-    function confirmToggleGeo() { alert("Geo restriction toggled"); }
-    function confirmToggleVoting() { alert("Voting toggled"); }
+    function startLiveResults() {
+      const ctx = document.getElementById('resultsChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Green House (Mithila)','Blue House (Nalanda)','Red House (Takshashila)','Yellow House (Vikramshila)'],
+          datasets: [{
+            data: [0,0,0,0],
+            backgroundColor: ['#4CAF50','#2196F3','#F44336','#FFB300']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: { color:'#fff', formatter:(v)=>v },
+            legend: { position:'bottom' }
+          }
+        }
+      });
+
+      db.ref('poll').on('value', snap => {
+        const d = snap.val() || {};
+        const vals = [d.optionA||0, d.optionB||0, d.optionC||0, d.optionD||0];
+        chart.data.datasets[0].data = vals;
+        chart.update();
+
+        const tbody = document.getElementById('resultsBody');
+        tbody.innerHTML = `
+          <tr><td>Green House (Mithila)</td><td>${vals[0]}</td></tr>
+          <tr><td>Blue House (Nalanda)</td><td>${vals[1]}</td></tr>
+          <tr><td>Red House (Takshashila)</td><td>${vals[2]}</td></tr>
+          <tr><td>Yellow House (Vikramshila)</td><td>${vals[3]}</td></tr>
+        `;
+      });
+    }
   </script>
 </body>
 </html>
