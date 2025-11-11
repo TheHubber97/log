@@ -73,17 +73,14 @@
       <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
       <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
       <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
-      <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
+      <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to March Past</button>
     </div>
 
     <div id="results">
       <h2>Live Results</h2>
       <table>
         <thead>
-          <tr>
-            <th>House</th>
-            <th>Votes</th>
-          </tr>
+          <tr><th>House</th><th>Votes</th></tr>
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>
@@ -109,25 +106,6 @@
 
     const PASSWORD = 'osamaabinladen';
     let chart, questionBtn;
-
-    // ---- Info Text Blocks ----
-    const infoTextA = `
-Please note:
-        Judgement should be based on,
-        ⦿ Theme Relevance
-        ⦿ Creativity and Innovation
-        ⦿ Visual Appeal
-        ⦿ Team Effort
-    `;
-
-    const infoTextB = `
-Please note:
-        Judgement should be based on,
-        ⦿ Coordination and Formation
-        ⦿ Energy and Enthusiasm
-        ⦿ Uniformity and Discipline
-        ⦿ Confidence
-    `;
 
     window.onload = function() {
       questionBtn = document.getElementById('questionBtn');
@@ -156,85 +134,103 @@ Please note:
       const snap = await db.ref('settings/questionText').once('value');
       const currentQ = snap.val();
       const isMarchPast = currentQ === "Which house had the best march past?";
+      
       const newQuestion = isMarchPast
         ? "Which House Display did you like the best?"
         : "Which house had the best march past?";
-      const newInfo = isMarchPast ? infoTextA : infoTextB;
+      const newInfo = isMarchPast
+        ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
+        : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
+      const newNote = isMarchPast
+        ? `<strong>Please note:</strong><br>Judgement should be based on,<br>⦿ Theme Relevance<br>⦿ Creativity and Innovation<br>⦿ Visual Appeal<br>⦿ Team Effort`
+        : `<strong>Please note:</strong><br>Judgement should be based on,<br>⦿ Coordination and Formation<br>⦿ Energy and Enthusiasm<br>⦿ Uniformity and Discipline<br>⦿ Confidence`;
 
-      await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
-      alert("Question and info text changed successfully!");
+      await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo, noteText: newNote });
+      alert("Question changed successfully!");
       syncButtonLabels();
     }
 
     function confirmResetVotes() {
-      if (confirm("Reset ALL votes?")) db.ref('poll').set({optionA:0,optionB:0,optionC:0,optionD:0});
+      if (confirm("Reset ALL votes?")) db.ref('poll').set({ optionA:0, optionB:0, optionC:0, optionD:0 });
     }
     function confirmResetHasVoted() {
-      if (confirm("Reset all 'hasVoted'?")) db.ref('resetFlag').set(Date.now());
+      if (confirm("Reset all hasVoted flags for voters?")) db.ref('resetFlag').set(Date.now().toString());
     }
     function resetMyLocalVote() {
       localStorage.removeItem('hasVoted');
-      alert("Local vote status cleared.");
+      alert('Local vote flag cleared.');
     }
-    function confirmDownloadCSV() {
-      db.ref('poll').once('value', snap => {
-        const d = snap.val() || {};
-        const csv = "House,Votes\nGreen,"+ (d.optionA||0) +"\nBlue,"+ (d.optionB||0) +"\nRed,"+ (d.optionC||0) +"\nYellow,"+ (d.optionD||0);
-        const blob = new Blob([csv], {type: 'text/csv'});
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = "poll_results.csv";
-        link.click();
-      });
+
+    async function confirmToggleGeo() {
+      const snap = await db.ref('settings/geoEnabled').once('value');
+      const newVal = !(snap.val() !== false);
+      await db.ref('settings/geoEnabled').set(newVal);
+      alert(`Geo Restriction ${newVal ? 'Enabled' : 'Disabled'}`);
+      document.getElementById('geoBtn').textContent = newVal ? 'Disable Geo Restriction' : 'Enable Geo Restriction';
     }
-    function confirmToggleGeo() {
-      db.ref('settings/geoEnabled').once('value').then(snap=>{
-        const val = !(snap.val());
-        db.ref('settings/geoEnabled').set(val);
-        document.getElementById('geoBtn').textContent = val ? "Disable Geo Restriction" : "Enable Geo Restriction";
-      });
+
+    async function confirmToggleVoting() {
+      const snap = await db.ref('settings/votingEnabled').once('value');
+      const newVal = !(snap.val() !== false);
+      await db.ref('settings/votingEnabled').set(newVal);
+      alert(`Voting ${newVal ? 'Enabled' : 'Disabled'}`);
+      document.getElementById('voteBtn').textContent = newVal ? 'Disable Voting' : 'Enable Voting';
     }
-    function confirmToggleVoting() {
-      db.ref('settings/votingEnabled').once('value').then(snap=>{
-        const val = !(snap.val());
-        db.ref('settings/votingEnabled').set(val);
-        document.getElementById('voteBtn').textContent = val ? "Disable Voting" : "Enable Voting";
-      });
+
+    async function confirmDownloadCSV() {
+      const snap = await db.ref('poll').once('value');
+      const poll = snap.val() || {};
+      let csv = 'House,Votes\n';
+      csv += `Green House (Mithila),${poll.optionA || 0}\n`;
+      csv += `Blue House (Nalanda),${poll.optionB || 0}\n`;
+      csv += `Red House (Takshashila),${poll.optionC || 0}\n`;
+      csv += `Yellow House (Vikramshila),${poll.optionD || 0}\n`;
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'poll_results.csv';
+      a.click();
     }
 
     function startLiveResults() {
+      db.ref('poll').on('value', snap => {
+        const poll = snap.val() || {};
+        const data = [
+          poll.optionA || 0,
+          poll.optionB || 0,
+          poll.optionC || 0,
+          poll.optionD || 0
+        ];
+        updateTable(data);
+        updateChart(data);
+      });
+    }
+
+    function updateTable(data) {
+      const tbody = document.getElementById('resultsBody');
+      const houses = ['Green House (Mithila)','Blue House (Nalanda)','Red House (Takshashila)','Yellow House (Vikramshila)'];
+      tbody.innerHTML = houses.map((h,i)=>`<tr><td>${h}</td><td>${data[i]}</td></tr>`).join('');
+    }
+
+    function updateChart(data) {
       const ctx = document.getElementById('resultsChart').getContext('2d');
+      if (chart) chart.destroy();
       chart = new Chart(ctx, {
-        type: 'pie',
+        type: 'bar',
         data: {
-          labels: ['Green House (Mithila)','Blue House (Nalanda)','Red House (Takshashila)','Yellow House (Vikramshila)'],
+          labels: ['Green','Blue','Red','Yellow'],
           datasets: [{
-            data: [0,0,0,0],
+            label: 'Votes',
+            data: data,
             backgroundColor: ['#4CAF50','#2196F3','#F44336','#FFB300']
           }]
         },
         options: {
           responsive: true,
-          plugins: {
-            datalabels: { color:'#fff', formatter:(v)=>v },
-            legend: { position:'bottom' }
-          }
-        }
-      });
-
-      db.ref('poll').on('value', snap => {
-        const d = snap.val() || {};
-        const vals = [d.optionA||0, d.optionB||0, d.optionC||0, d.optionD||0];
-        chart.data.datasets[0].data = vals;
-        chart.update();
-
-        const tbody = document.getElementById('resultsBody');
-        tbody.innerHTML = `
-          <tr><td>Green House (Mithila)</td><td>${vals[0]}</td></tr>
-          <tr><td>Blue House (Nalanda)</td><td>${vals[1]}</td></tr>
-          <tr><td>Red House (Takshashila)</td><td>${vals[2]}</td></tr>
-          <tr><td>Yellow House (Vikramshila)</td><td>${vals[3]}</td></tr>
-        `;
+          plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top' } },
+          scales: { y: { beginAtZero: true, precision: 0 } }
+        },
+        plugins: [ChartDataLabels]
       });
     }
   </script>
