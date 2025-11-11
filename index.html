@@ -110,6 +110,25 @@
     const PASSWORD = 'osamaabinladen';
     let chart, questionBtn;
 
+    // ---- Info Text Blocks ----
+    const infoTextA = `
+Please note:
+        Judgement should be based on,
+        ⦿ Theme Relevance
+        ⦿ Creativity and Innovation
+        ⦿ Visual Appeal
+        ⦿ Team Effort
+    `;
+
+    const infoTextB = `
+Please note:
+        Judgement should be based on,
+        ⦿ Coordination and Formation
+        ⦿ Energy and Enthusiasm
+        ⦿ Uniformity and Discipline
+        ⦿ Confidence
+    `;
+
     window.onload = function() {
       questionBtn = document.getElementById('questionBtn');
       const input = document.getElementById('adminPass');
@@ -129,22 +148,21 @@
     async function syncButtonLabels() {
       const snap = await db.ref('settings/questionText').once('value');
       const current = snap.val();
-      const isAwooo = current === "Which house had the best march past?";
-      questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
+      const isMarchPast = current === "Which house had the best march past?";
+      questionBtn.textContent = isMarchPast ? "Change question back to Display" : "Change question to March Past";
     }
 
     async function confirmToggleQuestion() {
       const snap = await db.ref('settings/questionText').once('value');
       const currentQ = snap.val();
-      const isAwooo = currentQ === "Which house had the best march past?";
-      const newQuestion = isAwooo
+      const isMarchPast = currentQ === "Which house had the best march past?";
+      const newQuestion = isMarchPast
         ? "Which House Display did you like the best?"
         : "Which house had the best march past?";
-      const newInfo = isAwooo
-        ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
-        : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
+      const newInfo = isMarchPast ? infoTextA : infoTextB;
+
       await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
-      alert("Question changed successfully!");
+      alert("Question and info text changed successfully!");
       syncButtonLabels();
     }
 
